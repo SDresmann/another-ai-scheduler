@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import App from './App';
 
 afterEach(() => {
@@ -19,7 +19,7 @@ test('shows two additional non-friday date slots for weekday schedules', () => {
 
   fireEvent.change(
     screen.getByLabelText(/which career readiness date/i),
-    { target: { value: 'tuesday' } }
+    { target: { value: '2026-06-23' } }
   );
 
   const secondDate = screen.getByLabelText(/second class date/i);
@@ -27,8 +27,8 @@ test('shows two additional non-friday date slots for weekday schedules', () => {
 
   expect(secondDate).toBeInTheDocument();
   expect(thirdDate).toBeInTheDocument();
-  expect(within(secondDate).queryByText(/friday/i)).not.toBeInTheDocument();
-  expect(within(thirdDate).queryByText(/friday/i)).not.toBeInTheDocument();
+  expect(secondDate).not.toHaveValue('2026-06-26');
+  expect(thirdDate).not.toHaveValue('2026-06-26');
 });
 
 test('submits the registration to the backend', async () => {
@@ -64,7 +64,8 @@ test('submits the registration to the backend', async () => {
           lastName: 'Smith',
           email: 'ken@example.com',
           phoneNumber: '555-555-5555',
-          workshopDate: 'friday',
+          date: '2026-06-26',
+          workshopDate: '2026-06-26',
           secondWorkshopDate: '',
           thirdWorkshopDate: '',
         }),
