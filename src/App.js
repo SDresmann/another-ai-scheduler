@@ -4,20 +4,165 @@ import './App.css';
 const API_URL =
   process.env.REACT_APP_API_URL || 'http://localhost:5000/api/bookings';
 
-const weekdayDateOptions = [
-  { value: '2026-06-23', day: 'tuesday', label: 'Tuesday | 5pm-6pm' },
-  { value: '2026-06-24', day: 'wednesday', label: 'Wednesday | 5pm-6pm' },
-  { value: '2026-06-25', day: 'thursday', label: 'Thursday | 5pm-6pm' },
+const DATE_PICKERS_VISIBLE = false;
+
+const UNEMPLOYMENT_STATUS_OPTIONS = [
+  'Employed full time',
+  'Employed part time',
+  'Unemployed',
+  'Underemployed',
+  'Not in the labor force',
 ];
 
-const fridayFastTrackOption = {
-  value: '2026-06-26',
-  day: 'friday',
-  label: 'Friday | 2pm-5pm',
-};
+const KENTUCKY_COUNTY_OPTIONS = [
+  'Adair',
+  'Allen',
+  'Anderson',
+  'Ballard',
+  'Barren',
+  'Bath',
+  'Bell',
+  'Boone',
+  'Bourbon',
+  'Boyd',
+  'Boyle',
+  'Bracken',
+  'Breathitt',
+  'Breckinridge',
+  'Bullitt',
+  'Butler',
+  'Caldwell',
+  'Calloway',
+  'Campbell',
+  'Carlisle',
+  'Carroll',
+  'Carter',
+  'Casey',
+  'Christian',
+  'Clark',
+  'Clay',
+  'Clinton',
+  'Crittenden',
+  'Cumberland',
+  'Daviess',
+  'Edmonson',
+  'Elliott',
+  'Estill',
+  'Fayette',
+  'Fleming',
+  'Floyd',
+  'Franklin',
+  'Fulton',
+  'Gallatin',
+  'Garrard',
+  'Grant',
+  'Graves',
+  'Grayson',
+  'Green',
+  'Greenup',
+  'Hancock',
+  'Hardin',
+  'Harlan',
+  'Harrison',
+  'Hart',
+  'Henderson',
+  'Henry',
+  'Hickman',
+  'Hopkins',
+  'Jackson',
+  'Jefferson',
+  'Jessamine',
+  'Johnson',
+  'Kenton',
+  'Knott',
+  'Knox',
+  'Larue',
+  'Laurel',
+  'Lawrence',
+  'Lee',
+  'Leslie',
+  'Letcher',
+  'Lewis',
+  'Lincoln',
+  'Livingston',
+  'Logan',
+  'Lyon',
+  'Madison',
+  'Magoffin',
+  'Marion',
+  'Marshall',
+  'Martin',
+  'Mason',
+  'McCracken',
+  'McCreary',
+  'McLean',
+  'Meade',
+  'Menifee',
+  'Mercer',
+  'Metcalfe',
+  'Monroe',
+  'Montgomery',
+  'Morgan',
+  'Muhlenberg',
+  'Nelson',
+  'Nicholas',
+  'Ohio',
+  'Oldham',
+  'Owen',
+  'Owsley',
+  'Pendleton',
+  'Perry',
+  'Pike',
+  'Powell',
+  'Pulaski',
+  'Robertson',
+  'Rockcastle',
+  'Rowan',
+  'Russell',
+  'Scott',
+  'Shelby',
+  'Simpson',
+  'Spencer',
+  'Taylor',
+  'Todd',
+  'Trigg',
+  'Trimble',
+  'Union',
+  'Warren',
+  'Washington',
+  'Wayne',
+  'Webster',
+  'Whitley',
+  'Wolfe',
+  'Woodford',
+];
 
-const datePickerMin = weekdayDateOptions[0].value;
-const datePickerMax = fridayFastTrackOption.value;
+function FormField({
+  label,
+  required = false,
+  className = '',
+  htmlFor,
+  children,
+}) {
+  return (
+    <div className={`form-field ${className}`.trim()}>
+      {label && (
+        <div className="form-field-label">
+          {htmlFor ? (
+            <label htmlFor={htmlFor}>
+              {label} {required && <span className="required">*</span>}
+            </label>
+          ) : (
+            <span>
+              {label} {required && <span className="required">*</span>}
+            </span>
+          )}
+        </div>
+      )}
+      {children}
+    </div>
+  );
+}
 
 function getDayNumber(dateValue) {
   if (!dateValue) return null;
@@ -33,15 +178,164 @@ function isFriday(dateValue) {
   return getDayNumber(dateValue) === 5;
 }
 
-function getRemainingWeekdayDates(firstDate) {
-  return weekdayDateOptions
-    .filter((option) => option.value !== firstDate)
-    .map((option) => option.value);
+function toDateInputValue(date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+
+  return `${year}-${month}-${day}`;
+}
+
+function getMonthDays(monthDate) {
+  const year = monthDate.getFullYear();
+  const month = monthDate.getMonth();
+  const firstDay = new Date(year, month, 1);
+  const lastDay = new Date(year, month + 1, 0);
+  const days = [];
+
+  for (let i = 0; i < firstDay.getDay(); i += 1) {
+    days.push(null);
+  }
+
+  for (let day = 1; day <= lastDay.getDate(); day += 1) {
+    days.push(new Date(year, month, day));
+  }
+
+  return days;
+}
+
+function formatDateForDisplay(dateValue) {
+  if (!dateValue) return '';
+
+  return new Date(`${dateValue}T12:00:00`).toLocaleDateString('en-US', {
+    weekday: 'long',
+    month: 'long',
+    day: 'numeric',
+    year: 'numeric',
+  });
+}
+
+function isUnavailableDate(dateValue, allowFriday) {
+  const dayNumber = getDayNumber(dateValue);
+  const isClosedDay = dayNumber === 0 || dayNumber === 1 || dayNumber === 6;
+
+  return isClosedDay || (!allowFriday && dayNumber === 5);
+}
+
+function DatePicker({
+  label,
+  name,
+  value,
+  onChange,
+  required,
+  allowFriday = true,
+}) {
+  const [isOpen, setIsOpen] = useState(false);
+  const [visibleMonth, setVisibleMonth] = useState(() => {
+    const startingDate = value ? new Date(`${value}T12:00:00`) : new Date();
+    return new Date(startingDate.getFullYear(), startingDate.getMonth(), 1);
+  });
+  const monthDays = getMonthDays(visibleMonth);
+  const monthLabel = visibleMonth.toLocaleDateString('en-US', {
+    month: 'long',
+    year: 'numeric',
+  });
+
+  const changeMonth = (direction) => {
+    setVisibleMonth(
+      (currentMonth) =>
+        new Date(currentMonth.getFullYear(), currentMonth.getMonth() + direction, 1)
+    );
+  };
+
+  const selectDate = (date) => {
+    onChange({ target: { value: toDateInputValue(date) } });
+    setIsOpen(false);
+  };
+
+  return (
+    <FormField
+      label={label}
+      required={required}
+      className="date-picker"
+    >
+      <input type="hidden" name={name} value={value} />
+      <button
+        type="button"
+        className={`date-picker-trigger${value ? '' : ' placeholder'}`}
+        onClick={() => setIsOpen((currentValue) => !currentValue)}
+        aria-label={label}
+      >
+        {value ? formatDateForDisplay(value) : 'Please Select'}
+      </button>
+
+      {isOpen && (
+        <div className="calendar-panel">
+          <div className="calendar-header">
+            <button
+              type="button"
+              className="calendar-nav"
+              onClick={() => changeMonth(-1)}
+              aria-label="Previous month"
+            >
+              ‹
+            </button>
+            <strong>{monthLabel}</strong>
+            <button
+              type="button"
+              className="calendar-nav"
+              onClick={() => changeMonth(1)}
+              aria-label="Next month"
+            >
+              ›
+            </button>
+          </div>
+
+          <div className="calendar-weekdays" aria-hidden="true">
+            <span>Sun</span>
+            <span>Mon</span>
+            <span>Tue</span>
+            <span>Wed</span>
+            <span>Thu</span>
+            <span>Fri</span>
+            <span>Sat</span>
+          </div>
+
+          <div className="calendar-grid">
+            {monthDays.map((date, index) => {
+              if (!date) {
+                return <span key={`empty-${index}`} className="calendar-empty" />;
+              }
+
+              const dateValue = toDateInputValue(date);
+              const unavailable = isUnavailableDate(dateValue, allowFriday);
+              const selected = value === dateValue;
+
+              return (
+                <button
+                  key={dateValue}
+                  type="button"
+                  className={`calendar-day${unavailable ? ' unavailable' : ''}${
+                    selected ? ' selected' : ''
+                  }`}
+                  disabled={unavailable}
+                  onClick={() => selectDate(date)}
+                  aria-label={formatDateForDisplay(dateValue)}
+                >
+                  {date.getDate()}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+    </FormField>
+  );
 }
 
 function App() {
   const [selectedDates, setSelectedDates] = useState({
-    first: fridayFastTrackOption.value,
+    first: '',
     second: '',
     third: '',
   });
@@ -66,12 +360,10 @@ function App() {
       return;
     }
 
-    const remainingWeekdays = getRemainingWeekdayDates(first);
-
     setSelectedDates({
       first,
-      second: remainingWeekdays[0],
-      third: remainingWeekdays[1],
+      second: '',
+      third: '',
     });
   };
 
@@ -83,6 +375,10 @@ function App() {
   };
 
   const validateSelectedDates = () => {
+    if (!DATE_PICKERS_VISIBLE) {
+      return '';
+    }
+
     if (!selectedDates.first) {
       return 'Please choose a workshop date.';
     }
@@ -136,6 +432,10 @@ function App() {
       lastName: formData.get('lastName'),
       email: formData.get('email'),
       phoneNumber: formData.get('phone'),
+      zip: formData.get('zip'),
+      areYouUnemployed: formData.get('are_you_unemployed'),
+      kentuckyCounty: formData.get('which_kentucky_county_do_you_live_in'),
+      marketingConsent: formData.get('opt_in_check_for_emailing_texting_applicants') === 'on',
       date: selectedDates.first,
       workshopDate: selectedDates.first,
       secondWorkshopDate: isWeekdaySchedule ? selectedDates.second : '',
@@ -160,7 +460,7 @@ function App() {
       }
 
       form.reset();
-      setSelectedDates({ first: fridayFastTrackOption.value, second: '', third: '' });
+      setSelectedDates({ first: '', second: '', third: '' });
       setSubmissionStatus({
         type: 'success',
         message: "You're registered! We'll send your session details soon.",
@@ -178,151 +478,150 @@ function App() {
   return (
     <div className="page-shell">
       <main className="registration-card">
-        <section className="intro-section" aria-labelledby="page-title">
-          <h1 id="page-title">Reserve Your Spot!</h1>
-
-          <p>Ready to gain the skills employers are looking for?</p>
-
-          <p>
-            This free Career Readiness Workshop is designed to help you stand
-            out when applying for summer jobs, part-time work, internships, or
-            your first full-time career opportunity.
-          </p>
-
-          <p>During this interactive session, you'll learn:</p>
-
-          <ul>
-            <li>AI-powered job search strategies</li>
-            <li>Resume tips that help you get noticed</li>
-            <li>Interview techniques to build confidence</li>
-            <li>Professional workplace and communication skills</li>
-            <li>How to create a clear plan for your future career path</li>
-          </ul>
-
-          <h2>Choose the Schedule That Works Best for You</h2>
-
-          <div className="schedule-block">
-            <h3>Option 1: Attend One Class Per Day</h3>
-            <p>
-              Join us Tuesday, Wednesday, and Thursday from{' '}
-              <strong>5:00 PM-6:00 PM ET.</strong> Each session focuses on a
-              different career readiness skill:
-            </p>
-            <ul>
-              <li>
-                <strong>Tuesday:</strong> AI-Powered Job Search Foundations
-              </li>
-              <li>
-                <strong>Wednesday:</strong> Interviewing &amp; Getting the
-                Offer
-              </li>
-              <li>
-                <strong>Thursday:</strong> Digital Workforce Skills
-              </li>
-            </ul>
-          </div>
-
-          <div className="schedule-block">
-            <h3>Option 2: Friday Fast Track</h3>
-            <p>
-              Can't attend during the week? Complete all three classes in a
-              single session on <strong>Friday from 2:00 PM-5:00 PM ET.</strong>
-            </p>
-          </div>
-
-          <p className="reminder-copy">
-            Once you register, we'll send your session details and reminders by
-            email and text.
-          </p>
-        </section>
-
         <form className="registration-form" onSubmit={handleSubmit}>
           <div className="form-row">
-            <label>
-              <span>
-                First name <b>*</b>
-              </span>
-              <input type="text" name="firstName" required />
-            </label>
+            <FormField
+              label="First name"
+              htmlFor="firstName"
+              required
+            >
+              <input id="firstName" type="text" name="firstName" required />
+            </FormField>
 
-            <label>
-              <span>
-                Last name <b>*</b>
-              </span>
-              <input type="text" name="lastName" required />
-            </label>
+            <FormField
+              label="Last name"
+              htmlFor="lastName"
+              required
+            >
+              <input id="lastName" type="text" name="lastName" required />
+            </FormField>
           </div>
 
-          <label>
-            <span>
-              Email <b>*</b>
-            </span>
-            <input type="email" name="email" required />
-          </label>
+          <FormField label="Email" htmlFor="email" required>
+            <input id="email" type="email" name="email" required />
+          </FormField>
 
-          <label>
-            <span>
-              Phone number <b>*</b>
-            </span>
-            <input type="tel" name="phone" required />
-          </label>
+          <div className="form-row">
+            <FormField
+              label="Phone number"
+              htmlFor="phone"
+              required
+            >
+              <input id="phone" type="tel" name="phone" required />
+            </FormField>
 
-          <label>
-            <span>
-              Which Career Readiness Date Are You Interested in Attending?{' '}
-              <b>*</b>
-            </span>
-            <input
-              type="date"
+            <FormField label="Zip code" htmlFor="zip" required>
+              <input id="zip" type="text" name="zip" required />
+            </FormField>
+          </div>
+
+          <FormField
+            label="What is your unemployment status?"
+            htmlFor="are_you_unemployed"
+            required
+          >
+            <select
+              id="are_you_unemployed"
+              name="are_you_unemployed"
+              required
+              defaultValue=""
+            >
+              <option value="" disabled>
+                Please Select
+              </option>
+              {UNEMPLOYMENT_STATUS_OPTIONS.map((option) => (
+                <option key={option} value={option}>
+                  {option}
+                </option>
+              ))}
+            </select>
+          </FormField>
+
+          <FormField
+            label="Which Kentucky county do you live in?"
+            htmlFor="which_kentucky_county_do_you_live_in"
+            required
+          >
+            <select
+              id="which_kentucky_county_do_you_live_in"
+              name="which_kentucky_county_do_you_live_in"
+              required
+              defaultValue=""
+            >
+              <option value="" disabled>
+                Please Select
+              </option>
+              {KENTUCKY_COUNTY_OPTIONS.map((county) => (
+                <option key={county} value={county}>
+                  {county}
+                </option>
+              ))}
+            </select>
+          </FormField>
+
+          <div
+            className={`date-picker-section${
+              DATE_PICKERS_VISIBLE ? '' : ' date-picker-section--hidden'
+            }`}
+            aria-hidden={DATE_PICKERS_VISIBLE ? undefined : true}
+          >
+            <DatePicker
+              label="Which Career Readiness Date Are You Interested in Attending?"
               name="workshopDate"
               value={selectedDates.first}
               onChange={handleFirstDateChange}
-              min={datePickerMin}
-              max={datePickerMax}
-              required
+              required={DATE_PICKERS_VISIBLE}
             />
-          </label>
 
-          {isWeekdaySchedule && (
-            <div className="additional-date-slots">
-              <p>
-                Since you selected the one-class-per-day schedule, choose your
-                other two class dates below.
-              </p>
+            {isWeekdaySchedule && (
+              <div className="additional-date-slots">
+                <p>
+                  Since you selected the one-class-per-day schedule, choose your
+                  other two class dates below.
+                </p>
 
-              <div className="form-row">
-                <label>
-                  <span>
-                    Second class date <b>*</b>
-                  </span>
-                  <input
-                    type="date"
+                <div className="form-row">
+                  <DatePicker
+                    label="Second class date"
                     name="secondWorkshopDate"
                     value={selectedDates.second}
                     onChange={handleAdditionalDateChange('second')}
-                    min={datePickerMin}
-                    max={datePickerMax}
-                    required
+                    required={DATE_PICKERS_VISIBLE}
+                    allowFriday={false}
                   />
-                </label>
 
-                <label>
-                  <span>
-                    Third class date <b>*</b>
-                  </span>
-                  <input
-                    type="date"
+                  <DatePicker
+                    label="Third class date"
                     name="thirdWorkshopDate"
                     value={selectedDates.third}
                     onChange={handleAdditionalDateChange('third')}
-                    min={datePickerMin}
-                    max={datePickerMax}
-                    required
+                    required={DATE_PICKERS_VISIBLE}
+                    allowFriday={false}
                   />
-                </label>
+                </div>
               </div>
+            )}
+          </div>
+
+          <FormField className="consent-field">
+            <div className="consent-row">
+              <input
+                type="checkbox"
+                id="marketing-consent"
+                name="opt_in_check_for_emailing_texting_applicants"
+                required
+              />
+              <label htmlFor="marketing-consent" className="consent-copy">
+                I consent to receive automated marketing emails and text messages
+                from Kable Academy dba Kable Academy and Favored Staffing at the
+                phone number and email I provided above, including pre-recorded
+                messages and calls and text messages from automatic dialing
+                systems. You can reply STOP to cancel text messages at any time
+                and click UNSUBSCRIBE in any email. Carrier message and data
+                rates may apply.
+              </label>
             </div>
-          )}
+          </FormField>
 
           {submissionStatus.message && (
             <p className={`form-message ${submissionStatus.type}`}>
@@ -330,7 +629,7 @@ function App() {
             </p>
           )}
 
-          <button type="submit" disabled={isSubmitting}>
+          <button type="submit" className="submit-button" disabled={isSubmitting}>
             {isSubmitting ? 'Submitting...' : 'Submit'}
           </button>
         </form>

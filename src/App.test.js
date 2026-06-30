@@ -1,34 +1,68 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import App from './App';
 
+function toDateInputValue(date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+
+  return `${year}-${month}-${day}`;
+}
+
+function getDateForDay(dayNumber) {
+  const today = new Date();
+  const date = new Date(today.getFullYear(), today.getMonth(), 1);
+
+  while (date.getDay() !== dayNumber) {
+    date.setDate(date.getDate() + 1);
+  }
+
+  const value = toDateInputValue(date);
+  const label = new Date(`${value}T12:00:00`).toLocaleDateString('en-US', {
+    weekday: 'long',
+    month: 'long',
+    day: 'numeric',
+    year: 'numeric',
+  });
+
+  return { value, label };
+}
+
 afterEach(() => {
   jest.restoreAllMocks();
 });
 
 test('renders the career readiness registration page', () => {
   render(<App />);
-  expect(screen.getByText(/reserve your spot/i)).toBeInTheDocument();
-  expect(screen.getByLabelText(/first name/i)).toBeInTheDocument();
+  expect(screen.getByLabelText(/^first name/i)).toBeInTheDocument();
   expect(screen.getByRole('button', { name: /submit/i })).toBeInTheDocument();
 });
 
 test('shows two additional non-friday date slots for weekday schedules', () => {
+  const tuesday = getDateForDay(2);
+
   render(<App />);
 
-  expect(screen.queryByLabelText(/second class date/i)).not.toBeInTheDocument();
+  expect(
+    screen.queryByRole('button', { name: /second class date/i, hidden: true })
+  ).not.toBeInTheDocument();
 
-  fireEvent.change(
-    screen.getByLabelText(/which career readiness date/i),
-    { target: { value: '2026-06-23' } }
+  fireEvent.click(
+    screen.getByRole('button', {
+      name: /which career readiness date/i,
+      hidden: true,
+    })
   );
+  fireEvent.click(screen.getByRole('button', { name: tuesday.label, hidden: true }));
 
-  const secondDate = screen.getByLabelText(/second class date/i);
-  const thirdDate = screen.getByLabelText(/third class date/i);
-
-  expect(secondDate).toBeInTheDocument();
-  expect(thirdDate).toBeInTheDocument();
-  expect(secondDate).not.toHaveValue('2026-06-26');
-  expect(thirdDate).not.toHaveValue('2026-06-26');
+  expect(screen.getByText(/second class date/i, { hidden: true })).toBeInTheDocument();
+  expect(screen.getByText(/third class date/i, { hidden: true })).toBeInTheDocument();
+  expect(
+    screen.getByRole('button', { name: /second class date/i, hidden: true })
+  ).toBeInTheDocument();
+  expect(
+    screen.getByRole('button', { name: /third class date/i, hidden: true })
+  ).toBeInTheDocument();
 });
 
 test('submits the registration to the backend', async () => {
@@ -39,19 +73,28 @@ test('submits the registration to the backend', async () => {
 
   render(<App />);
 
-  fireEvent.change(screen.getByLabelText(/first name/i), {
+  fireEvent.change(screen.getByLabelText(/^first name/i), {
     target: { value: 'Ken' },
   });
-  fireEvent.change(screen.getByLabelText(/last name/i), {
+  fireEvent.change(screen.getByLabelText(/^last name/i), {
     target: { value: 'Smith' },
   });
-  fireEvent.change(screen.getByLabelText(/email/i), {
+  fireEvent.change(screen.getByRole('textbox', { name: /^email \*/i }), {
     target: { value: 'ken@example.com' },
   });
-  fireEvent.change(screen.getByLabelText(/phone number/i), {
+  fireEvent.change(screen.getByLabelText(/^phone number/i), {
     target: { value: '555-555-5555' },
   });
-
+  fireEvent.change(screen.getByLabelText(/zip code/i), {
+    target: { value: '40202' },
+  });
+  fireEvent.change(screen.getByLabelText(/unemployment status/i), {
+    target: { value: 'Unemployed' },
+  });
+  fireEvent.change(screen.getByLabelText(/kentucky county/i), {
+    target: { value: 'Jefferson' },
+  });
+  fireEvent.click(screen.getByLabelText(/consent to receive automated marketing/i));
   fireEvent.click(screen.getByRole('button', { name: /submit/i }));
 
   await waitFor(() => {
@@ -64,8 +107,12 @@ test('submits the registration to the backend', async () => {
           lastName: 'Smith',
           email: 'ken@example.com',
           phoneNumber: '555-555-5555',
-          date: '2026-06-26',
-          workshopDate: '2026-06-26',
+          zip: '40202',
+          areYouUnemployed: 'Unemployed',
+          kentuckyCounty: 'Jefferson',
+          marketingConsent: true,
+          date: '',
+          workshopDate: '',
           secondWorkshopDate: '',
           thirdWorkshopDate: '',
         }),
