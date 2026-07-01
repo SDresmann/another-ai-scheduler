@@ -2,7 +2,7 @@ import { useState } from 'react';
 import './App.css';
 
 const API_URL =
-  process.env.REACT_APP_API_URL || 'http://localhost:5000/api/bookings';
+'https://dw-ai-scheduler-backend.onrender.com' || 'http://localhost:5000/api/bookings';
 
 const DATE_PICKERS_VISIBLE = false;
 
