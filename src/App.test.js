@@ -68,7 +68,10 @@ test('shows two additional non-friday date slots for weekday schedules', () => {
 test('submits the registration to the backend', async () => {
   jest.spyOn(window, 'fetch').mockResolvedValue({
     ok: true,
-    json: async () => ({}),
+    json: async () => ({
+      hubspotContactSynced: true,
+      hubspotSyncAction: 'updated',
+    }),
   });
 
   render(<App />);
@@ -89,10 +92,10 @@ test('submits the registration to the backend', async () => {
     target: { value: '40202' },
   });
   fireEvent.change(screen.getByLabelText(/unemployment status/i), {
-    target: { value: 'Unemployed' },
+    target: { value: 'Dislocated Worker' },
   });
   fireEvent.change(screen.getByLabelText(/kentucky county/i), {
-    target: { value: 'Jefferson' },
+    target: { value: 'Warren' },
   });
   fireEvent.click(screen.getByLabelText(/consent to receive automated marketing/i));
   fireEvent.click(screen.getByRole('button', { name: /submit/i }));
@@ -103,18 +106,17 @@ test('submits the registration to the backend', async () => {
       expect.objectContaining({
         method: 'POST',
         body: JSON.stringify({
-          firstName: 'Ken',
-          lastName: 'Smith',
+          firstname: 'Ken',
+          lastname: 'Smith',
           email: 'ken@example.com',
-          phoneNumber: '555-555-5555',
+          phone: '555-555-5555',
           zip: '40202',
-          areYouUnemployed: 'Unemployed',
-          kentuckyCounty: 'Jefferson',
-          marketingConsent: true,
-          date: '',
-          workshopDate: '',
-          secondWorkshopDate: '',
-          thirdWorkshopDate: '',
+          are_you_unemployed: 'Dislocated Worker',
+          which_kentucky_county_do_you_live_in: 'Warren',
+          opt_in_check_for_emailing_texting_applicants: true,
+          which_career_readiness_date_are_you_interested_in_attending_work: '',
+          choose_the_2nd_date_for_your_career_readiness_class_work: '',
+          choose_the_3rd_date_for_your_career_readiness_class_work: '',
         }),
       })
     );

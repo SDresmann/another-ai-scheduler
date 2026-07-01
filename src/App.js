@@ -7,134 +7,25 @@ const API_URL =
 const DATE_PICKERS_VISIBLE = false;
 
 const UNEMPLOYMENT_STATUS_OPTIONS = [
-  'Employed full time',
-  'Employed part time',
-  'Unemployed',
-  'Underemployed',
-  'Not in the labor force',
+  'Dislocated Worker',
+  'Fired or Terminated',
+  'First Time Job Seeker',
+  'Position Eliminated',
+  'Voluntarily Left Previous Job',
 ];
 
 const KENTUCKY_COUNTY_OPTIONS = [
-  'Adair',
-  'Allen',
-  'Anderson',
-  'Ballard',
-  'Barren',
-  'Bath',
-  'Bell',
-  'Boone',
-  'Bourbon',
-  'Boyd',
-  'Boyle',
-  'Bracken',
-  'Breathitt',
-  'Breckinridge',
-  'Bullitt',
-  'Butler',
-  'Caldwell',
-  'Calloway',
-  'Campbell',
-  'Carlisle',
-  'Carroll',
-  'Carter',
-  'Casey',
-  'Christian',
-  'Clark',
-  'Clay',
-  'Clinton',
-  'Crittenden',
-  'Cumberland',
-  'Daviess',
-  'Edmonson',
-  'Elliott',
-  'Estill',
-  'Fayette',
-  'Fleming',
-  'Floyd',
-  'Franklin',
-  'Fulton',
-  'Gallatin',
-  'Garrard',
-  'Grant',
-  'Graves',
-  'Grayson',
-  'Green',
-  'Greenup',
-  'Hancock',
-  'Hardin',
-  'Harlan',
-  'Harrison',
-  'Hart',
-  'Henderson',
-  'Henry',
-  'Hickman',
-  'Hopkins',
-  'Jackson',
-  'Jefferson',
-  'Jessamine',
-  'Johnson',
-  'Kenton',
-  'Knott',
-  'Knox',
-  'Larue',
-  'Laurel',
-  'Lawrence',
-  'Lee',
-  'Leslie',
-  'Letcher',
-  'Lewis',
-  'Lincoln',
-  'Livingston',
-  'Logan',
-  'Lyon',
-  'Madison',
-  'Magoffin',
-  'Marion',
-  'Marshall',
-  'Martin',
-  'Mason',
-  'McCracken',
-  'McCreary',
-  'McLean',
-  'Meade',
-  'Menifee',
-  'Mercer',
-  'Metcalfe',
-  'Monroe',
-  'Montgomery',
-  'Morgan',
-  'Muhlenberg',
-  'Nelson',
-  'Nicholas',
-  'Ohio',
-  'Oldham',
-  'Owen',
-  'Owsley',
-  'Pendleton',
-  'Perry',
-  'Pike',
-  'Powell',
-  'Pulaski',
-  'Robertson',
-  'Rockcastle',
-  'Rowan',
-  'Russell',
-  'Scott',
-  'Shelby',
-  'Simpson',
-  'Spencer',
-  'Taylor',
-  'Todd',
-  'Trigg',
-  'Trimble',
-  'Union',
   'Warren',
-  'Washington',
-  'Wayne',
-  'Webster',
-  'Whitley',
-  'Wolfe',
-  'Woodford',
+  'Logan',
+  'Metcalfe',
+  'Barren',
+  'Edmonson',
+  'Hart',
+  'Monroe',
+  'Allen',
+  'Butler',
+  'Simpson',
+  'Other',
 ];
 
 function FormField({
@@ -428,18 +319,22 @@ function App() {
     const form = event.currentTarget;
     const formData = new FormData(form);
     const payload = {
-      firstName: formData.get('firstName'),
-      lastName: formData.get('lastName'),
+      firstname: formData.get('firstname'),
+      lastname: formData.get('lastname'),
       email: formData.get('email'),
-      phoneNumber: formData.get('phone'),
+      phone: formData.get('phone'),
       zip: formData.get('zip'),
-      areYouUnemployed: formData.get('are_you_unemployed'),
-      kentuckyCounty: formData.get('which_kentucky_county_do_you_live_in'),
-      marketingConsent: formData.get('opt_in_check_for_emailing_texting_applicants') === 'on',
-      date: selectedDates.first,
-      workshopDate: selectedDates.first,
-      secondWorkshopDate: isWeekdaySchedule ? selectedDates.second : '',
-      thirdWorkshopDate: isWeekdaySchedule ? selectedDates.third : '',
+      are_you_unemployed: formData.get('are_you_unemployed'),
+      which_kentucky_county_do_you_live_in: formData.get('which_kentucky_county_do_you_live_in'),
+      opt_in_check_for_emailing_texting_applicants:
+        formData.get('opt_in_check_for_emailing_texting_applicants') === 'on',
+      which_career_readiness_date_are_you_interested_in_attending_work: selectedDates.first,
+      choose_the_2nd_date_for_your_career_readiness_class_work: isWeekdaySchedule
+        ? selectedDates.second
+        : '',
+      choose_the_3rd_date_for_your_career_readiness_class_work: isWeekdaySchedule
+        ? selectedDates.third
+        : '',
     };
 
     setIsSubmitting(true);
@@ -459,11 +354,30 @@ function App() {
         throw new Error(errorData.message || 'Unable to submit registration.');
       }
 
+      const result = await response.json();
+
       form.reset();
       setSelectedDates({ first: '', second: '', third: '' });
+
+      if (result.hubspotSyncError) {
+        setSubmissionStatus({
+          type: 'error',
+          message: `Saved locally, but HubSpot sync failed: ${result.hubspotSyncError}`,
+        });
+        return;
+      }
+
+      if (!result.hubspotContactSynced) {
+        setSubmissionStatus({
+          type: 'error',
+          message: 'Saved locally, but the contact was not synced to HubSpot.',
+        });
+        return;
+      }
+
       setSubmissionStatus({
         type: 'success',
-        message: "You're registered! We'll send your session details soon.",
+        message: `You're registered! HubSpot contact ${result.hubspotSyncAction || 'synced'}.`,
       });
     } catch (error) {
       setSubmissionStatus({
@@ -482,18 +396,18 @@ function App() {
           <div className="form-row">
             <FormField
               label="First name"
-              htmlFor="firstName"
+              htmlFor="firstname"
               required
             >
-              <input id="firstName" type="text" name="firstName" required />
+              <input id="firstname" type="text" name="firstname" required />
             </FormField>
 
             <FormField
               label="Last name"
-              htmlFor="lastName"
+              htmlFor="lastname"
               required
             >
-              <input id="lastName" type="text" name="lastName" required />
+              <input id="lastname" type="text" name="lastname" required />
             </FormField>
           </div>
 
@@ -567,7 +481,7 @@ function App() {
           >
             <DatePicker
               label="Which Career Readiness Date Are You Interested in Attending?"
-              name="workshopDate"
+              name="which_career_readiness_date_are_you_interested_in_attending_work"
               value={selectedDates.first}
               onChange={handleFirstDateChange}
               required={DATE_PICKERS_VISIBLE}
@@ -583,7 +497,7 @@ function App() {
                 <div className="form-row">
                   <DatePicker
                     label="Second class date"
-                    name="secondWorkshopDate"
+                    name="choose_the_2nd_date_for_your_career_readiness_class_work"
                     value={selectedDates.second}
                     onChange={handleAdditionalDateChange('second')}
                     required={DATE_PICKERS_VISIBLE}
@@ -592,7 +506,7 @@ function App() {
 
                   <DatePicker
                     label="Third class date"
-                    name="thirdWorkshopDate"
+                    name="choose_the_3rd_date_for_your_career_readiness_class_work"
                     value={selectedDates.third}
                     onChange={handleAdditionalDateChange('third')}
                     required={DATE_PICKERS_VISIBLE}
