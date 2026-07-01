@@ -38,31 +38,27 @@ test('renders the career readiness registration page', () => {
   expect(screen.getByRole('button', { name: /submit/i })).toBeInTheDocument();
 });
 
-test('shows two additional non-friday date slots for weekday schedules', () => {
+test('only allows wednesday and friday in the scheduler', () => {
+  const wednesday = getDateForDay(3);
   const tuesday = getDateForDay(2);
 
   render(<App />);
 
-  expect(
-    screen.queryByRole('button', { name: /second class date/i, hidden: true })
-  ).not.toBeInTheDocument();
-
   fireEvent.click(
     screen.getByRole('button', {
       name: /which career readiness date/i,
-      hidden: true,
     })
   );
-  fireEvent.click(screen.getByRole('button', { name: tuesday.label, hidden: true }));
 
-  expect(screen.getByText(/second class date/i, { hidden: true })).toBeInTheDocument();
-  expect(screen.getByText(/third class date/i, { hidden: true })).toBeInTheDocument();
   expect(
-    screen.getByRole('button', { name: /second class date/i, hidden: true })
-  ).toBeInTheDocument();
+    screen.getByRole('button', { name: wednesday.label })
+  ).not.toBeDisabled();
   expect(
-    screen.getByRole('button', { name: /third class date/i, hidden: true })
-  ).toBeInTheDocument();
+    screen.getByRole('button', { name: tuesday.label })
+  ).toBeDisabled();
+  expect(
+    screen.queryByRole('button', { name: /second class date/i })
+  ).not.toBeInTheDocument();
 });
 
 test('submits the registration to the backend', async () => {
@@ -75,6 +71,7 @@ test('submits the registration to the backend', async () => {
   });
 
   render(<App />);
+  const friday = getDateForDay(5);
 
   fireEvent.change(screen.getByLabelText(/^first name/i), {
     target: { value: 'Ken' },
@@ -98,6 +95,10 @@ test('submits the registration to the backend', async () => {
     target: { value: 'Warren' },
   });
   fireEvent.click(screen.getByLabelText(/consent to receive automated marketing/i));
+  fireEvent.click(
+    screen.getByRole('button', { name: /which career readiness date/i })
+  );
+  fireEvent.click(screen.getByRole('button', { name: friday.label }));
   fireEvent.click(screen.getByRole('button', { name: /submit/i }));
 
   await waitFor(() => {
@@ -114,11 +115,15 @@ test('submits the registration to the backend', async () => {
           are_you_unemployed: 'Dislocated Worker',
           which_kentucky_county_do_you_live_in: 'Warren',
           opt_in_check_for_emailing_texting_applicants: true,
-          which_career_readiness_date_are_you_interested_in_attending_work: '',
-          choose_the_2nd_date_for_your_career_readiness_class_work: '',
-          choose_the_3rd_date_for_your_career_readiness_class_work: '',
+          class_date: friday.value,
         }),
       })
     );
+    expect(screen.getByRole('heading', { name: /thank you/i })).toBeInTheDocument();
   });
+
+  fireEvent.click(screen.getByRole('button', { name: /register again/i }));
+
+  expect(screen.getByLabelText(/^first name/i)).toBeInTheDocument();
+  expect(screen.getByRole('button', { name: /submit/i })).toBeInTheDocument();
 });

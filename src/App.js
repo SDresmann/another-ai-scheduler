@@ -7,7 +7,7 @@ const API_BASE_URL =
     ? 'https://dw-ai-scheduler-backend.onrender.com'
     : 'http://localhost:5000');
 
-const DATE_PICKERS_VISIBLE = false;
+const DATE_PICKERS_VISIBLE = true;
 
 const UNEMPLOYMENT_STATUS_OPTIONS = [
   'Dislocated Worker',
@@ -63,13 +63,16 @@ function getDayNumber(dateValue) {
   return new Date(`${dateValue}T12:00:00`).getDay();
 }
 
-function isTuesdayThroughThursday(dateValue) {
-  const dayNumber = getDayNumber(dateValue);
-  return dayNumber >= 2 && dayNumber <= 4;
+function isWednesday(dateValue) {
+  return getDayNumber(dateValue) === 3;
 }
 
 function isFriday(dateValue) {
   return getDayNumber(dateValue) === 5;
+}
+
+function isAvailableClassDay(dateValue) {
+  return isWednesday(dateValue) || isFriday(dateValue);
 }
 
 function toDateInputValue(date) {
@@ -109,11 +112,8 @@ function formatDateForDisplay(dateValue) {
   });
 }
 
-function isUnavailableDate(dateValue, allowFriday) {
-  const dayNumber = getDayNumber(dateValue);
-  const isClosedDay = dayNumber === 0 || dayNumber === 1 || dayNumber === 6;
-
-  return isClosedDay || (!allowFriday && dayNumber === 5);
+function isUnavailableDate(dateValue) {
+  return !isAvailableClassDay(dateValue);
 }
 
 function DatePicker({
@@ -122,7 +122,6 @@ function DatePicker({
   value,
   onChange,
   required,
-  allowFriday = true,
 }) {
   const [isOpen, setIsOpen] = useState(false);
   const [visibleMonth, setVisibleMonth] = useState(() => {
@@ -202,7 +201,7 @@ function DatePicker({
               }
 
               const dateValue = toDateInputValue(date);
-              const unavailable = isUnavailableDate(dateValue, allowFriday);
+              const unavailable = isUnavailableDate(dateValue);
               const selected = value === dateValue;
 
               return (
@@ -238,34 +237,22 @@ function App() {
     message: '',
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isSubmitted, setIsSubmitted] = useState(false);
+  const [formKey, setFormKey] = useState(0);
 
-  const isWeekdaySchedule = isTuesdayThroughThursday(selectedDates.first);
+  const resetRegistration = () => {
+    setIsSubmitted(false);
+    setSubmissionStatus({ type: '', message: '' });
+    setSelectedDates({ first: '', second: '', third: '' });
+    setFormKey((currentKey) => currentKey + 1);
+  };
 
   const handleFirstDateChange = (event) => {
-    const first = event.target.value;
-
-    if (isFriday(first)) {
-      setSelectedDates({ first, second: '', third: '' });
-      return;
-    }
-
-    if (!isTuesdayThroughThursday(first)) {
-      setSelectedDates({ first, second: '', third: '' });
-      return;
-    }
-
     setSelectedDates({
-      first,
+      first: event.target.value,
       second: '',
       third: '',
     });
-  };
-
-  const handleAdditionalDateChange = (slotName) => (event) => {
-    setSelectedDates((currentDates) => ({
-      ...currentDates,
-      [slotName]: event.target.value,
-    }));
   };
 
   const validateSelectedDates = () => {
@@ -277,34 +264,8 @@ function App() {
       return 'Please choose a workshop date.';
     }
 
-    if (isFriday(selectedDates.first)) {
-      return '';
-    }
-
-    if (!isTuesdayThroughThursday(selectedDates.first)) {
-      return 'Please choose a Tuesday, Wednesday, Thursday, or Friday workshop date.';
-    }
-
-    const weekdayDates = [
-      selectedDates.first,
-      selectedDates.second,
-      selectedDates.third,
-    ];
-
-    if (weekdayDates.some((date) => !date)) {
-      return 'Please choose all three weekday class dates.';
-    }
-
-    if (weekdayDates.some(isFriday)) {
-      return 'Friday can only be selected for the Friday Fast Track schedule.';
-    }
-
-    if (weekdayDates.some((date) => !isTuesdayThroughThursday(date))) {
-      return 'Weekday classes must be Tuesday, Wednesday, and Thursday only.';
-    }
-
-    if (new Set(weekdayDates).size !== weekdayDates.length) {
-      return 'Please choose each weekday class date only once.';
+    if (!isAvailableClassDay(selectedDates.first)) {
+      return 'Please choose a Wednesday or Friday workshop date.';
     }
 
     return '';
@@ -331,13 +292,7 @@ function App() {
       which_kentucky_county_do_you_live_in: formData.get('which_kentucky_county_do_you_live_in'),
       opt_in_check_for_emailing_texting_applicants:
         formData.get('opt_in_check_for_emailing_texting_applicants') === 'on',
-      which_career_readiness_date_are_you_interested_in_attending_work: selectedDates.first,
-      choose_the_2nd_date_for_your_career_readiness_class_work: isWeekdaySchedule
-        ? selectedDates.second
-        : '',
-      choose_the_3rd_date_for_your_career_readiness_class_work: isWeekdaySchedule
-        ? selectedDates.third
-        : '',
+      class_date: selectedDates.first,
     };
 
     setIsSubmitting(true);
@@ -357,31 +312,12 @@ function App() {
         throw new Error(errorData.message || 'Unable to submit registration.');
       }
 
-      const result = await response.json();
+      await response.json();
 
       form.reset();
       setSelectedDates({ first: '', second: '', third: '' });
-
-      if (result.hubspotSyncError) {
-        setSubmissionStatus({
-          type: 'error',
-          message: `Saved locally, but HubSpot sync failed: ${result.hubspotSyncError}`,
-        });
-        return;
-      }
-
-      if (!result.hubspotContactSynced) {
-        setSubmissionStatus({
-          type: 'error',
-          message: 'Saved locally, but the contact was not synced to HubSpot.',
-        });
-        return;
-      }
-
-      setSubmissionStatus({
-        type: 'success',
-        message: `You're registered! HubSpot contact ${result.hubspotSyncAction || 'synced'}.`,
-      });
+      setIsSubmitted(true);
+      setSubmissionStatus({ type: '', message: '' });
     } catch (error) {
       setSubmissionStatus({
         type: 'error',
@@ -395,7 +331,24 @@ function App() {
   return (
     <div className="page-shell">
       <main className="registration-card">
-        <form className="registration-form" onSubmit={handleSubmit}>
+        {isSubmitted ? (
+          <section className="thank-you-card">
+            <h1>Thank you!</h1>
+            <p>We received your registration.</p>
+            <button
+              type="button"
+              className="submit-button"
+              onClick={resetRegistration}
+            >
+              Register again
+            </button>
+          </section>
+        ) : (
+        <form
+          key={formKey}
+          className="registration-form"
+          onSubmit={handleSubmit}
+        >
           <div className="form-row">
             <FormField
               label="First name"
@@ -484,40 +437,11 @@ function App() {
           >
             <DatePicker
               label="Which Career Readiness Date Are You Interested in Attending?"
-              name="which_career_readiness_date_are_you_interested_in_attending_work"
+              name="class_date"
               value={selectedDates.first}
               onChange={handleFirstDateChange}
               required={DATE_PICKERS_VISIBLE}
             />
-
-            {isWeekdaySchedule && (
-              <div className="additional-date-slots">
-                <p>
-                  Since you selected the one-class-per-day schedule, choose your
-                  other two class dates below.
-                </p>
-
-                <div className="form-row">
-                  <DatePicker
-                    label="Second class date"
-                    name="choose_the_2nd_date_for_your_career_readiness_class_work"
-                    value={selectedDates.second}
-                    onChange={handleAdditionalDateChange('second')}
-                    required={DATE_PICKERS_VISIBLE}
-                    allowFriday={false}
-                  />
-
-                  <DatePicker
-                    label="Third class date"
-                    name="choose_the_3rd_date_for_your_career_readiness_class_work"
-                    value={selectedDates.third}
-                    onChange={handleAdditionalDateChange('third')}
-                    required={DATE_PICKERS_VISIBLE}
-                    allowFriday={false}
-                  />
-                </div>
-              </div>
-            )}
           </div>
 
           <FormField className="consent-field">
@@ -550,6 +474,7 @@ function App() {
             {isSubmitting ? 'Submitting...' : 'Submit'}
           </button>
         </form>
+        )}
       </main>
     </div>
   );
