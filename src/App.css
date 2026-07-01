@@ -254,7 +254,7 @@ select:required:invalid {
   align-self: flex-start;
   border: 0;
   border-radius: 3px;
-  background: #ff7a59;
+  background: #3bab5a;
   color: #ffffff;
   cursor: pointer;
   font-size: 14px;
@@ -290,7 +290,7 @@ select:required:invalid {
 
 .submit-button:hover,
 .submit-button:focus-visible {
-  background: #ff8f73;
+  background: #34994f;
 }
 
 .calendar-nav:hover,

@@ -18,17 +18,17 @@ const UNEMPLOYMENT_STATUS_OPTIONS = [
 ];
 
 const KENTUCKY_COUNTY_OPTIONS = [
-  'Warren',
-  'Logan',
-  'Metcalfe',
+  'Allen',
   'Barren',
+  'Butler',
   'Edmonson',
   'Hart',
+  'Logan',
+  'Metcalfe',
   'Monroe',
-  'Allen',
-  'Butler',
-  'Simpson',
   'Other',
+  'Simpson',
+  'Warren',
 ];
 
 function FormField({
@@ -238,14 +238,6 @@ function App() {
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
-  const [formKey, setFormKey] = useState(0);
-
-  const resetRegistration = () => {
-    setIsSubmitted(false);
-    setSubmissionStatus({ type: '', message: '' });
-    setSelectedDates({ first: '', second: '', third: '' });
-    setFormKey((currentKey) => currentKey + 1);
-  };
 
   const handleFirstDateChange = (event) => {
     setSelectedDates({
@@ -335,17 +327,9 @@ function App() {
           <section className="thank-you-card">
             <h1>Thank you!</h1>
             <p>We received your registration.</p>
-            <button
-              type="button"
-              className="submit-button"
-              onClick={resetRegistration}
-            >
-              Register again
-            </button>
           </section>
         ) : (
         <form
-          key={formKey}
           className="registration-form"
           onSubmit={handleSubmit}
         >

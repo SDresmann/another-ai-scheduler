@@ -121,9 +121,4 @@ test('submits the registration to the backend', async () => {
     );
     expect(screen.getByRole('heading', { name: /thank you/i })).toBeInTheDocument();
   });
-
-  fireEvent.click(screen.getByRole('button', { name: /register again/i }));
-
-  expect(screen.getByLabelText(/^first name/i)).toBeInTheDocument();
-  expect(screen.getByRole('button', { name: /submit/i })).toBeInTheDocument();
 });
