@@ -46,7 +46,7 @@ test('only allows wednesday and friday in the scheduler', () => {
 
   fireEvent.click(
     screen.getByRole('button', {
-      name: /which career readiness date/i,
+      name: /which career readiness workshop date/i,
     })
   );
 
@@ -96,7 +96,7 @@ test('submits the registration to the backend', async () => {
   });
   fireEvent.click(screen.getByLabelText(/consent to receive automated marketing/i));
   fireEvent.click(
-    screen.getByRole('button', { name: /which career readiness date/i })
+    screen.getByRole('button', { name: /which career readiness workshop date/i })
   );
   fireEvent.click(screen.getByRole('button', { name: friday.label }));
   fireEvent.click(screen.getByRole('button', { name: /submit/i }));

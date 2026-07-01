@@ -26,9 +26,9 @@ const KENTUCKY_COUNTY_OPTIONS = [
   'Logan',
   'Metcalfe',
   'Monroe',
-  'Other',
   'Simpson',
   'Warren',
+  'Other',
 ];
 
 function FormField({
@@ -420,7 +420,7 @@ function App() {
             aria-hidden={DATE_PICKERS_VISIBLE ? undefined : true}
           >
             <DatePicker
-              label="Which Career Readiness Date Are You Interested in Attending?"
+              label="Which Career Readiness Workshop Date Are You Interested in Attending?"
               name="class_date"
               value={selectedDates.first}
               onChange={handleFirstDateChange}
