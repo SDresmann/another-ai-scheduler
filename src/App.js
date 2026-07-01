@@ -1,8 +1,11 @@
 import { useState } from 'react';
 import './App.css';
 
-const API_URL =
-'https://dw-ai-scheduler-backend.onrender.com' || 'http://localhost:5000/api/bookings';
+const API_BASE_URL =
+  process.env.REACT_APP_API_URL ||
+  (process.env.NODE_ENV === 'production'
+    ? 'https://dw-ai-scheduler-backend.onrender.com'
+    : 'http://localhost:5000');
 
 const DATE_PICKERS_VISIBLE = false;
 
@@ -341,7 +344,7 @@ function App() {
     setSubmissionStatus({ type: '', message: '' });
 
     try {
-      const response = await fetch(API_URL, {
+      const response = await fetch(`${API_BASE_URL}/api/bookings`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
