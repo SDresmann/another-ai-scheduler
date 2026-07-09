@@ -343,7 +343,7 @@ function App() {
           className="registration-form"
           onSubmit={handleSubmit}
         >
-          <div className="form-row">
+          <div className="form-row name-row">
             <FormField
               label="First name"
               htmlFor="firstname"

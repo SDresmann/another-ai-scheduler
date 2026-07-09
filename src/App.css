@@ -315,4 +315,8 @@ select:focus,
   .form-row {
     grid-template-columns: 1fr;
   }
+
+  .name-row {
+    grid-template-columns: 1fr 1fr;
+  }
 }
