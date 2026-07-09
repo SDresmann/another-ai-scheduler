@@ -112,8 +112,14 @@ function formatDateForDisplay(dateValue) {
   });
 }
 
+function isPastDate(dateValue) {
+  if (!dateValue) return false;
+
+  return dateValue < toDateInputValue(new Date());
+}
+
 function isUnavailableDate(dateValue) {
-  return !isAvailableClassDay(dateValue);
+  return isPastDate(dateValue) || !isAvailableClassDay(dateValue);
 }
 
 function DatePicker({
@@ -258,6 +264,10 @@ function App() {
 
     if (!isAvailableClassDay(selectedDates.first)) {
       return 'Please choose a Wednesday or Friday workshop date.';
+    }
+
+    if (isPastDate(selectedDates.first)) {
+      return 'Please choose a current or future workshop date.';
     }
 
     return '';
